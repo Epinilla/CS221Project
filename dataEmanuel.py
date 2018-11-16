@@ -43,7 +43,7 @@ def getFields(url, planeTime):
         if time/100 == planeTime/100:
             # for value in allValues:
             #     print value.text
-            fieldsList = (float(allValues[2].text.encode('ascii', 'ignore')), float(allValues[8].text.encode('ascii', 'ignore')), \
+            fieldsList = (float(allValues[2].text.encode('ascii', 'ignore')), float(allValues[8].text.encode('ascii', 'ignore')), str(allValues[10].text.encode('ascii', 'ignore')),  \
             float(allValues[12].text.encode('ascii', 'ignore')), float(allValues[21].text.encode('ascii', 'ignore')))
             break
     driver.close()
@@ -55,8 +55,9 @@ nLate = 0
 for index, row in df1.iterrows():
     delayTime = row['ARRIVAL_DELAY']
     originAirport = row['ORIGIN_AIRPORT']
-    if index < 16: continue
-    if index >= 30: break
+    if index > 5: break
+    # if index < 16: continue
+    # if index >= 30: break
     # if originAirport != 'DEN': continue
     # if originAirport != 'SFO': continue
     destinationAirport = row['DESTINATION_AIRPORT']
@@ -65,6 +66,7 @@ for index, row in df1.iterrows():
     day = row['DAY']
     departTime = int(row['SCHEDULED_DEPARTURE'])
     arrivalTime = int(row['SCHEDULED_ARRIVAL'])
+    print "index: ",index
     print "orginial Airport: ", originAirport
     print "destination Airport: ", destinationAirport
     try:
@@ -80,12 +82,16 @@ for index, row in df1.iterrows():
 
     df1.loc[index, 'DEPART_TEMP'] = departureWeather[0]
     df1.loc[index, 'DEPART_HUMIDITY'] = departureWeather[1]
-    df1.loc[index, 'DEPART_WIND'] = departureWeather[2]
-    df1.loc[index, 'DEPART_PRECIP'] = departureWeather[3]
+    df1.loc[index, 'DEPART_WINDIR'] = departureWeather[2]
+    df1.loc[index, 'DEPART_WIND'] = departureWeather[3]
+    df1.loc[index, 'DEPART_PRECIP'] = departureWeather[4]
+    # df1.loc[index, 'DEPART_CONDITION'] = departureWeather[5]
     df1.loc[index, 'ARRIVAL_TEMP'] = arrivalWeather[0]
     df1.loc[index, 'ARRIVAL_HUMIDITY'] = arrivalWeather[1]
-    df1.loc[index, 'ARRIVAL_WIND'] = arrivalWeather[2]
-    df1.loc[index, 'ARRIVAL_PRECIP'] = arrivalWeather[3]
+    df1.loc[index, 'ARRIVAL_WINDIR'] = arrivalWeather[2]
+    df1.loc[index, 'ARRIVAL_WIND'] = arrivalWeather[3]
+    df1.loc[index, 'ARRIVAL_PRECIP'] = arrivalWeather[4]
+    # df1.loc[index, 'ARRIVAL_CONDITION'] = arrivalWeather[5]
     
     
     # print (df1)
