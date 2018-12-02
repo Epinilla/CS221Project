@@ -3,14 +3,16 @@ import math
 import collections
 import numpy as np
 
-fileName = "datapoints.csv"
-dataFrame = pd.read_csv(fileName)
+trainFileName = "trainData.csv"
+trainDataFrame = pd.read_csv(trainFileName)
+testFileName = "testData1.csv"
+testDataFrame = pd.read_csv(testFileName)
 eta = .1
-listOfColumns = ['YEAR', 'MONTH', 'DAY', 'DAY_OF_WEEK', 'AIRLINE', 'FLIGHT_NUMBER',
+listOfColumns = ['DAY_OF_WEEK', 'AIRLINE', 'FLIGHT_NUMBER',
 'ORIGIN_AIRPORT', 'DESTINATION_AIRPORT', 'SCHEDULED_DEPARTURE', 'SCHEDULED_TIME',
 'DISTANCE', 'SCHEDULED_ARRIVAL', 'ARRIVAL_DELAY', 'DEPART_TEMP', 'DEPART_HUMIDITY',
-'DEPART_WINDDIR', 'DEPART_WIND', 'DEPART_PRECIP', 'ARRIVAL_TEMP', 'ARRIVAL_HUMIDITY',
-'ARRIVAL_WINDDIR', 'ARRIVAL_WIND', 'ARRIVAL_PRECIP']
+'DEPART_WINDIR', 'DEPART_WIND', 'DEPART_PRECIP', 'ARRIVAL_TEMP', 'ARRIVAL_HUMIDITY',
+'ARRIVAL_WINDIR', 'ARRIVAL_WIND', 'ARRIVAL_PRECIP']
 featureVector = collections.defaultdict(float)
 
 
@@ -21,7 +23,35 @@ def featureExtractor(entry):
     map = collections.defaultdict(float)
     for colValue in listOfColumns:
         value = entry[colValue]
-        map[colValue + "-" + str(value)] = 1.0
+        feature = ""
+        if str(colValue) == 'SCHEDULED_DEPARTURE' or str(colValue) == 'SCHEDULED_ARRIVAL':
+            if math.isnan(value):
+                value = 0
+            bucket = str(int(int(value)/600))
+            feature = colValue + "-" + bucket
+        elif str(colValue) == 'SCHEDULED_TIME':
+            if math.isnan(value):
+                value = 0
+            bucket = str(int(int(value)/60))
+            feature = colValue + "-" + str(bucket)
+        elif str(colValue) == 'DISTANCE':
+            if math.isnan(value):
+                value = 0
+            bucket = str(int(int(value)/1000))
+            feature = colValue + "-" + str(bucket)
+        elif (str(colValue) == 'DEPART_TEMP' or str(colValue) == 'ARRIVAL_TEMP'
+        or str(colValue) == 'DEPART_HUMIDITY' or str(colValue) == 'ARRIVAL_HUMIDITY'
+        or str(colValue) == 'DEPART_WIND' or str(colValue) == 'ARRIVAL_WIND'
+        or str(colValue) == 'DEPART_PRECIP' or str(colValue) == 'ARRIVAL_PRECIP'):
+            if math.isnan(value):
+                value = 0
+            # print ("value: ", value)
+            bucket = str(int(int(value)/10))
+            feature = colValue + "-" + str(bucket)
+        else:
+            feature = colValue + "-" + str(value)
+
+        map[feature] = 1.0
 
     return map
 
@@ -51,16 +81,44 @@ def increment(d1, scale, d2):
     for f, v in d2.items():
         d1[f] = d1.get(f, 0) + v * scale
 
-
-
-for index, row in dataFrame.iterrows():
+# training data
+for index, row in trainDataFrame.iterrows():
+    bucket = ""
     for colValue in listOfColumns:
         value = row[colValue]
-        entry = colValue + "-" + str(value)
+        # print ("value", value)
+        # if math.isnan(value):
+        #     value = 0
+        if str(colValue) == 'SCHEDULED_DEPARTURE' or str(colValue) == 'SCHEDULED_ARRIVAL':
+            if math.isnan(value):
+                value = 0
+            bucket = str(int(int(value)/600))
+            entry = colValue + "-" + bucket
+        elif str(colValue) == 'SCHEDULED_TIME':
+            if math.isnan(value):
+                value = 0
+            bucket = str(int(int(value)/60))
+            entry = colValue + "-" + str(bucket)
+        elif str(colValue) == 'DISTANCE':
+            if math.isnan(value):
+                value = 0
+            bucket = str(int(int(value)/1000))
+            entry = colValue + "-" + str(bucket)
+        elif (str(colValue) == 'DEPART_TEMP' or str(colValue) == 'ARRIVAL_TEMP'
+        or str(colValue) == 'DEPART_HUMIDITY' or str(colValue) == 'ARRIVAL_HUMIDITY'
+        or str(colValue) == 'DEPART_WIND' or str(colValue) == 'ARRIVAL_WIND'
+        or str(colValue) == 'DEPART_PRECIP' or str(colValue) == 'ARRIVAL_PRECIP'):
+            if math.isnan(value):
+                value = 0
+            # print ("value: ", value)
+            bucket = str(int(int(value)/10))
+            entry = colValue + "-" + str(bucket)
+        else:
+            entry = colValue + "-" + str(value)
         featureVector[entry] = 0.0
 
-for i in range(1000):
-    for index, row in dataFrame.iterrows():
+for i in range(1):
+    for index, row in trainDataFrame.iterrows():
         realOutput = row['ARRIVAL_DELAY']
         entryFeatures = featureExtractor(row)
 
@@ -70,13 +128,58 @@ for i in range(1000):
         if sum < 1:
             increment(featureVector, realOutput*eta, entryFeatures)
 
+
 # testing data!
+track = 0.0
+currBest = 100
+bestNum = 0
+while (track < 10.0):
+    # for i in range (10000000):
+    #     aopple = 1
+    print ("index: ", track)
+    numDelay = 0
+    numOnTime = 0
+    predictDelay = 0
+    predictOnTime = 0
+    counterCorrect = 0
+    for index, row in testDataFrame.iterrows():
+        realOutput = row['ARRIVAL_DELAY']
+        if realOutput == 1:
+            numDelay += 1
+        else:
+            numOnTime += 1
+        entryFeatures = featureExtractor(row)
+        dotProductValue = dotProduct(featureVector, entryFeatures)
+        delayed = False
+        if dotProductValue > track:
+            delayed = True
+        if delayed == True:
+            predictDelay += 1
+        else:
+            predictOnTime += 1
+        if realOutput == delayed:
+            counterCorrect += 1
+        #     print ("correct!")
+        # else:
+        #     print ("wrong classification :(")
+    track = float(track + .01)
+    # print ("updated index: ", track)
+    actualDelayed = ((100.0*numDelay)/(numDelay+numOnTime))
+    # print ("real: ", actualDelayed)
+    predictedDelay = (100.0*predictDelay)/(predictDelay+predictOnTime)
+    # print ("guess: ", predictedDelay)
+    loss = abs(actualDelayed - predictedDelay)
+    # print ("loss: ", loss)
+    if loss < currBest:
+        currBest = loss
+        bestNum = index
+
 numDelay = 0
 numOnTime = 0
 predictDelay = 0
 predictOnTime = 0
 counterCorrect = 0
-for index, row in dataFrame.iterrows():
+for index, row in testDataFrame.iterrows():
     realOutput = row['ARRIVAL_DELAY']
     if realOutput == 1:
         numDelay += 1
@@ -85,7 +188,7 @@ for index, row in dataFrame.iterrows():
     entryFeatures = featureExtractor(row)
     dotProductValue = dotProduct(featureVector, entryFeatures)
     delayed = False
-    if dotProductValue > 1.5:
+    if dotProductValue > bestNum:
         delayed = True
     if delayed == True:
         predictDelay += 1
@@ -93,13 +196,19 @@ for index, row in dataFrame.iterrows():
         predictOnTime += 1
     if realOutput == delayed:
         counterCorrect += 1
-        print ("correct!")
-    else:
-        print ("wrong classification :(")
+    #     print ("correct!")
+    # else:
+    #     print ("wrong classification :(")
+
 
 print ("delay = {}, on time = {}, predict delay = {}, predict on time = {}".format(numDelay, numOnTime, predictDelay, predictOnTime))
 print ("actual: {}%, prediction: {}%".format((100.0*numDelay/(numDelay+numOnTime)), ((100.0*predictDelay)/(predictDelay+predictOnTime))))
 print ("Correctly labeled: {}%".format((100.0*counterCorrect)/(numDelay+numOnTime)))
+
+# print ("featureVector:", featureVector)
+# for entry in featureVector:
+#     if featureVector[entry] > 0:
+#         print ("featureName: ", entry, ", featureValue: ", featureVector[entry])
 
 
 #
